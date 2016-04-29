@@ -10,6 +10,13 @@
 
 using namespace std;
 
+class Weight
+{
+public:
+	double price;
+	int time;
+	int distance;
+};
 
 class Node
 {
@@ -18,17 +25,15 @@ public:
 	double searchDistance;
 	string id;
 	int index;
-	int time;
-	double price;
-	int distance;
+	Weight w;
 	Node* next;
 
 	Node(string _id, int _time, double _price, int _distance, Node * _next)
 	{
 		id = _id;
-		time = _time;
-		price = _price;
-		distance = _distance;
+		w.time = _time;
+		w.price = _price;
+		w.distance = _distance;
 		next = _next;
 		visited = false;
 		searchDistance = DBL_MAX;
@@ -45,6 +50,8 @@ public:
 	enum  search { time, price, distance };
 	int numberOfAirports = 18;
 	Node* headNodeList[18];
+	queue <Node*> searchQueue;
+	Weight weightMatrix[18][18];
 
 	Graph()
 	{
@@ -53,14 +60,76 @@ public:
 			Node *n = new Node(airportNameList[i], 0, 0, 0, NULL);
 			n->index = i;
 			headNodeList[i] = n;
+
+			for (int j = 0; j < numberOfAirports; j++)
+			{
+				Weight w;
+				w.distance = INT_MAX;
+				w.price = DBL_MAX;
+				w.time = INT_MAX;
+				weightMatrix[i][j] = w;
+			}
 		}
 	}
 
 	void AddEdge(string srcId, string destId, int time, double price, int distance);
 	Node* GetHeadNode(string id);
 	int GetNodeIndex(string id);
+	string SearchDirectFlights(string from, string to);
 };
 
+
+
+string Graph::SearchDirectFlights(string from, string to)
+{
+	int distance = INT_MAX;
+	double price = DBL_MAX;
+	int time = INT_MAX;
+	Node * startNode = GetHeadNode(from);
+
+
+	Node* node = startNode;
+	while (node != NULL)
+	{
+		if (node->id == to)
+		{
+			if (node->w.distance < distance)
+			{
+				distance = node->w.distance;
+			}
+			if (node->w.time < time)
+			{
+				time = node->w.time;
+			}
+			if (node->w.price < price)
+			{
+				price = node->w.price;
+			}
+		}
+		node = node->next;
+	}
+
+	string res = "";
+
+	if (distance < INT_MAX)
+	{
+		res += "\nShortest Distance: ";
+		res += to_string(distance) + " miles";
+	}
+
+	if (price < DBL_MAX)
+	{
+		res += "\nLowest Price: ";
+		res += "$" + to_string(price);
+	}
+
+	if (time < INT_MAX)
+	{
+		res += "\nShortest Time: ";
+		res += to_string(time) + " min";
+	}
+	return res == "" ? "NOT - FOUND" : res;
+}
 
 Node* Graph::GetHeadNode(string id)
 {
@@ -93,7 +162,6 @@ int Graph::GetNodeIndex(string id)
 	return index;
 }
 
-
 void Graph::AddEdge(string srcId, string destId, int time, double price, int distance)
 {
 	Node *head = NULL;
@@ -122,49 +190,34 @@ void Graph::AddEdge(string srcId, string destId, int time, double price, int dis
 	}
 };
 
-int TimeDifferenceToMinutes(string deptTime, string arivalTime)
+
+int TimeDifferenceToMinutes(int deptTime, int arivalTime)
 {
-	int dminutes = 0;
-	int aminutes = 0;
+	int dh = deptTime / 100;
+	int dm = deptTime % 100;
+	int dminutes = dh * 60 + dm;
 
-	switch (deptTime.length())
-	{
-	case 2:
-		dminutes = stoi(deptTime);
-		break;
-	case 3:
-		dminutes = (stoi(deptTime.substr(0, 1)) * 60) + stoi(deptTime.substr(1, 3));
-		break;
-	case 4:
-		dminutes = (stoi(deptTime.substr(0, 2)) * 60) + stoi(deptTime.substr(2, 4));
-		break;
-	}
+	int ah = arivalTime / 100;
+	int am = arivalTime % 100;
+	int aminutes = ah * 60 + am;
 
-	switch (arivalTime.length())
+	if (dminutes > aminutes)
 	{
-	case 2:
-		aminutes = stoi(arivalTime);
-		break;
-	case 3:
-		aminutes = (stoi(arivalTime.substr(0, 1)) * 60) + stoi(arivalTime.substr(1, 3));
-		break;
-	case 4:
-		aminutes = (stoi(arivalTime.substr(0, 2)) * 60) + stoi(arivalTime.substr(2, 4));
-		break;
+		return (dminutes - aminutes);
 	}
-	return (aminutes - dminutes);
+	else
+	{
+		return (aminutes - dminutes);
+	}
 }
-
-
 
 int main()
 {
-
 	Graph * graph = new Graph();
 
 	ifstream in;
-	//in.open("testData.csv");
-	in.open("project1.csv");
+	in.open("testData.csv");
+	//in.open("project1.csv");
 	string flights;
 	if (in.is_open() == true)
 	{
@@ -191,7 +244,7 @@ int main()
 			dist = flights.substr(delimiterPos[3] + 1, (delimiterPos[4] - delimiterPos[3] - 1));
 			price = flights.substr(delimiterPos[4] + 1, (delimiterPos[5] - delimiterPos[4] - 1));
 
-			int timeDifference = TimeDifferenceToMinutes(dep, arriv);
+			int timeDifference = TimeDifferenceToMinutes(stoi(dep), stoi(arriv));
 
 			graph->AddEdge(src, dest, timeDifference, stod(price), stoi(dist));
 
@@ -217,11 +270,13 @@ int main()
 	cout << "Enter a destination airport: ";
 	cin >> to;
 
-
 	cout << endl;
 	cout << endl;
-
+	cout << "Direct Flight Between " << from << " and " << to << endl;
+	cout << graph->SearchDirectFlights(from, to) << endl;
+		
 
 	system("pause");
 	return -1;
 }
+
