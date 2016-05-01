@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string>
-#include <vector> 
 #include <fstream>
 #include <queue>
 #include <iostream>
@@ -76,9 +75,190 @@ public:
 	Node* GetHeadNode(string id);
 	int GetNodeIndex(string id);
 	string SearchDirectFlights(string from, string to);
+	string SearchConnectingFlights(string from, string to);
+	string Dijsktra(string from, string to, search searchType);
+	void PrintWeightMatrix(search searchType);
+
 };
 
+void Graph::PrintWeightMatrix(search searchType)
+{
+	for (int i = 0; i < 18; i++)
+	{
+		for (int j = 0; j < 18; j++)
+		{
+			if (searchType == search::distance)
+			{
+				if (weightMatrix[i][j].distance < INT_MAX)
+				{
+					cout << weightMatrix[i][j].distance << " ";
+				}
+				else
+				{
+					cout << 0 << " ";
+				}
+			}
+			else if (searchType == search::price)
+			{
+				if (weightMatrix[i][j].price < DBL_MAX)
+				{
+					cout << weightMatrix[i][j].price << " ";
+				}
+				else
+				{
+					cout << 0 << " ";
+				}
+			}
+			else if (searchType == search::time)
+			{
+				if (weightMatrix[i][j].time < INT_MAX)
+				{
+					cout << weightMatrix[i][j].time << " ";
+				}
+				else
+				{
+					cout << 0 << " ";
+				}
+			}
+		}
+		cout << endl;
+	}
+	cout << endl;
+}
 
+string Graph::SearchConnectingFlights(string from, string to)
+{
+	double pweight = DBL_MAX;
+	int tweight = INT_MAX;
+	int dweight = INT_MAX;
+	Node * startNode = GetHeadNode(from);
+	startNode->searchDistance = 0;
+	searchQueue.push(startNode);
+
+	while (!searchQueue.empty())
+	{
+		Node * temp = searchQueue.front();
+		Node * c = GetHeadNode(temp->id);
+
+		c = c->next;
+		while (c != NULL)
+		{
+			if (c->visited == false)
+			{
+				dweight = weightMatrix[temp->index][c->index].distance;
+				pweight = weightMatrix[temp->index][c->index].price;
+				tweight = weightMatrix[temp->index][c->index].time;
+
+				if (c->w.distance < dweight)
+				{
+					weightMatrix[temp->index][c->index].distance = c->w.distance;
+				}
+
+				if (c->w.price < pweight)
+				{
+					weightMatrix[temp->index][c->index].price = c->w.price;
+				}
+
+				if (c->w.time < tweight)
+				{
+					weightMatrix[temp->index][c->index].time = c->w.time;
+				}
+
+				searchQueue.push(c);
+			}
+			c = c->next;
+		}
+		temp->visited = true;
+		searchQueue.pop();
+	}
+
+	cout << "Distance Matrix" << endl;
+	PrintWeightMatrix(search::distance);
+
+	cout << endl;
+	cout << "Price Matrix" << endl;
+	PrintWeightMatrix(search::price);
+
+	cout << endl;
+	cout << "Time Matrix" << endl;
+	PrintWeightMatrix(search::time);
+
+
+	string res = "";
+
+	res += "\nShortest Distance: ";
+	res += Dijsktra(from, to, search::distance); +" miles";
+
+	res += "\nLowest Price: ";
+	res += "$" + Dijsktra(from, to, search::price);
+
+	res += "\nShortest Time: ";
+	res += Dijsktra(from, to, search::time); +" min";
+
+	return res == "" ? "NOT - FOUND" : res;
+}
+
+string Graph::Dijsktra(string from, string to, search searchType)
+{
+	int visited[18];
+	double weight[18];
+	int startIndex = GetNodeIndex(from);
+	int endIndex = GetNodeIndex(to);
+	int curr, dest, start, temp;
+	double cost, new1;
+	for (int i = 0; i < 18; i++)
+	{
+		visited[i] = 0;
+		weight[i] = DBL_MAX;
+	}
+
+	visited[startIndex] = 1;
+	weight[startIndex] = 0;
+	curr = startIndex;
+	dest = endIndex;
+
+	while (curr != dest)
+	{
+		cost = DBL_MAX;
+		start = weight[curr];
+
+		for (int i = 0; i < 18; i++)
+		{
+			if (visited[i] == 0)
+			{
+				double weightFromMatrix = 0;
+				if (searchType == search::distance)
+				{
+					weightFromMatrix = weightMatrix[curr][i].distance;
+				}
+				else if (searchType == search::price)
+				{
+					weightFromMatrix = weightMatrix[curr][i].price;
+				}
+				if (searchType == search::time)
+				{
+					weightFromMatrix = weightMatrix[curr][i].time;
+				}
+
+				new1 = start + weightFromMatrix;
+				if (new1 < weight[i])
+				{
+					weight[i] = new1;
+					if (weight[i] < cost)
+					{
+						cost = weight[i];
+						temp = i;
+					}
+				}
+			}
+		}
+		curr = temp;
+		visited[curr] = 1;
+
+	}
+
+	return to_string(cost);
+}
 
 string Graph::SearchDirectFlights(string from, string to)
 {
@@ -190,7 +370,6 @@ void Graph::AddEdge(string srcId, string destId, int time, double price, int dis
 	}
 };
 
-
 int TimeDifferenceToMinutes(int deptTime, int arivalTime)
 {
 	int dh = deptTime / 100;
@@ -275,8 +454,13 @@ int main()
 	cout << "Direct Flight Between " << from << " and " << to << endl;
 	cout << graph->SearchDirectFlights(from, to) << endl;
 		
+	cout << endl;
+	cout << endl;
+	cout << "Connecting Flights Between " << from << " and " << to << endl;
+	cout << graph->SearchConnectingFlights(from, to) << endl;
+	cout << endl;
+	
 
 	system("pause");
 	return -1;
 }
-
